@@ -26,6 +26,6 @@ Elements can be found, either directly or via an iterator, using a subset of XPa
 supports matching elements along a path by element name (type) and attribute name and value.
 Currently, attribute values do not conform to XPath in that they are not required to be enclosed in quotes;
 single quotes may be used but are ignored and as a consequence attribute values containing any of the
-special characters `@ [ ] = or '` cannot be matched.
+special characters `@ [ ] = '` cannot be matched.
 
 See USAGE.md for how to use tinyxml2-ex.
