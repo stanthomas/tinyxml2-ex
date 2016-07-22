@@ -8,7 +8,7 @@ TiCPP is a wrapper for TinyXML that adds familiar C++ features, including a rath
 
 TinyXML has been superceeded by TinyXML2 {http://www.grinninglizard.com/tinyxml2/index.html} which is smaller, faster and the focus of current development.
 
-The purpose of this project, tinyxml2-extension, is to bring TiCPP funtionality to TinyXML2 but conform to modern C++ style.
+The purpose of this project, tinyxml2-extension, is to bring TiCPP functionality to TinyXML2 but go further *and* conform to modern C++ style.
 The initial release focusses on reading and processing XML data generated elsewhere (by TiCPP in my case).
 It will progress to updating and generating XML as I move to TinyXML2 across my applications.
 And stream i/o (since I often want to get/put XML via a socket).
