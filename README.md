@@ -4,7 +4,7 @@ A set of add-on classes and helper functions bringing basic XPath element select
 ### Background
 TinyXML {http://www.grinninglizard.com/tinyxml} is an easy to use, small and efficient XML parser for C++.
 I've used it, or rather TinyXML++, aka TiCPP {https://github.com/rjpcomputing/ticpp}, for some years.
-TiCPP is a wrapper for TinyXML that adds familiar C++ features including it's rather novel implementation of iterators.
+TiCPP is a wrapper for TinyXML that adds familiar C++ features, including a rather novel implementation of iterators.
 
 TinyXML has been superceeded by TinyXML2 {http://www.grinninglizard.com/tinyxml2/index.html} which is smaller, faster and the focus of current development.
 
