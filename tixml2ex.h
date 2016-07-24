@@ -29,7 +29,7 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 #include <exception>
 #include <cassert>
 
-#include "tinyxml2.h"
+#include <tinyxml2.h>
 
 
 namespace tinyxml2
@@ -308,7 +308,7 @@ namespace tinyxml2
 				_branch .emplace_back (std::make_pair (ElementFilter (path .substr (start, pos - start)), nullptr));
 			}
 
-			Selector (const XMLDocument & doc, std::string path) : Selector (doc .FirstChildElement(), path) {}
+			Selector (const XMLDocument & doc, std::string path) : Selector (doc .FirstChildElement(), (!path.empty() && path[0] == '/') ? path : '/' + path) {}
 
 			ElementIterator begin()
 			{
