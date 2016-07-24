@@ -149,6 +149,13 @@ namespace tinyxml2
 		{
 		public:
 			using selection = std::list<std::pair<ElementFilter, const XMLElement *>>;
+			// iterator_traits
+			using iterator_category = std::input_iterator_tag;
+			using value_type = XMLElement;
+			using difference_type = std::ptrdiff_t;
+			using pointer = XMLElement *;
+			using reference = XMLElement &;
+
 
 		public:
 			ElementIterator() { _selection .emplace_back (std::make_pair (ElementFilter(), nullptr));  }
