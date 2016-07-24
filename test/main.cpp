@@ -24,6 +24,7 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 #include <string>
 #include <iostream>
+#include <algorithm>
 #include <conio.h>
 
 
@@ -122,13 +123,14 @@ int main()
 		if (eA)
 			for (auto eB : eA)
 			{
-				for (auto eC : eB)
+				// just for fun, use standard algorithm for_each to iterate over the children of <B>
+				for_each (begin (eB), end (eB),
+					[](auto e)
 				{
-					// simple iterators are just that, they iterate over all children
-					// therefore we must test element name (type) to examine only <C> elements
-					if (strcmp (eC -> Name(), "C") == 0)
-						cout << eC -> Name() << " = " << text (eC) << endl;
-				}
+						// simple iterators are just that, they iterate over all children
+						// therefore we must test element name (type) to examine only <C> elements
+					if (strcmp (e -> Name(), "C") == 0) cout << e -> Name() << " = " << text (e) << endl;
+				});
 			}
 	}
 	catch (tinyxml2::XmlException & e)
