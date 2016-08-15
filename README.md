@@ -12,11 +12,25 @@ By virtue of ADL, in many cases there is no need to qualify the namespace.
 
 Elements can be found, either directly or via an iterator, using a subset of XPath syntax which
 supports matching elements along a path by element name (type) and attribute name and value.
-Currently, attribute values do not conform to XPath in that they are not required to be enclosed in quotes;
+Currently, attribute values do not fully conform to XPath in that they are not required to be enclosed in quotes;
 single quotes may be used but are ignored and as a consequence attribute values containing any of the
 special characters `@ [ ] = '` cannot be matched.
 
-See USAGE.md for information on use tinyxml2-ex.
+tinyxml2-ex allows us to write some very concise C++ code to pull out a selection of elements in an XML document:
+```
+auto doc = tinyxml2::load_document (R"-(<?xml version="1.0" encoding="utf-8"?>
+<panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-");
+
+for (auto part : tinyxml2::selection (*doc, "panagram/part"))
+   cout << text (part);
+cout << endl;
+```
+outputs:
+```
+The quick brown fox jumps over the lazy dog.
+```
+
+See USAGE.md for information on using tinyxml2-ex.
 
 ### Background
 TinyXML {http://www.grinninglizard.com/tinyxml} is an easy to use, small and efficient XML parser for C++.
@@ -25,7 +39,7 @@ TiCPP is a wrapper for TinyXML that adds familiar C++ features, including a rath
 
 TinyXML has been superceeded by TinyXML2 {http://www.grinninglizard.com/tinyxml2/index.html} which is smaller, faster and the focus of current development. However, TinyXML2 eschews the STL and several aspects of modern C++, in the interests, presumably, of the widest possible application.
 
-The purpose of this project, tinyxml2-extension, is to bring TiCPP functionality to TinyXML2 but go further *and* conform to modern C++ style while adding little or no overhead.
+The purpose of this project, tinyxml2-extension, is to bring TiCPP functionality to TinyXML2 but go further *and* conform to modern C++ style while adding little or no overhead. In keeping with the philosophy of TinyXML2, the extension adds enough functionality to be useful without attempting to implement every option - there are other, much larger and more complex XML libraries available for this.
 
 The initial release focusses on reading and processing XML data generated elsewhere (by TiCPP in my case).
 It will progress to updating and generating XML as I move to TinyXML2 across my applications.
