@@ -21,7 +21,7 @@ tinyxml2-ex allows us to write some very concise C++ code to pull out a selectio
 auto doc = tinyxml2::load_document (R"-(<?xml version="1.0" encoding="utf-8"?>
 <panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-");
 
-for (auto part : tinyxml2::selection (*doc, "panagram/part"))
+for (auto part : selection (*doc, "panagram/part"))
    cout << text (part);
 cout << endl;
 ```
