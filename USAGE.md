@@ -57,7 +57,7 @@ The type of bThree is `tinyxml2::XMLElement *` and will be a `nullptr` if a matc
 ```c++
 auto c5678 = find_element (bThree, "C");
 ```
-Which returns the first \<C> element that is a child of the \<B> element with attribue id='three'.
+Which returns the first \<C> element that is a child of the \<B> element with attribute id='three'.
 
 
 ##### You can iterate over the immediate child elements of an element:
