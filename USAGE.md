@@ -75,7 +75,7 @@ The type of cc is `const tinyxml2::XMLElement *` and
 for (auto const cc : selection (bThree, "C[@code]"s))
    std::cout << attribute_value (cc, "code") << std::endl;;
 ```
-Iterates over all \<C> elements with a code attribute that are children of \<B> element(s) with attribue id='three'.
+Iterates over all \<C> elements with a code attribute that are children of \<B> element(s) with attribute id='three'.
 `attribute_value` helper function returns the value of the attribute as a string;
 the string is empty when the element does not have the attribute specified
 (which cannot happen here clearly).
