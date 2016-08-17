@@ -50,7 +50,7 @@ if `load_document` is unable to parse the string.
 auto bThree = find_element (*doc, "A/B[@id='three']"s);
 ```
 `bThree` is the first \<B> element with attribute id='three'.
-The type of bThree is `const tinyxml2::XMLElement *` and will be a `nullptr` if a matching element is not found.
+The type of bThree is `tinyxml2::XMLElement *` and will be a `nullptr` if a matching element is not found.
 
 
 ##### You can find a child element of an element:
