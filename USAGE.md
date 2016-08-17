@@ -72,7 +72,7 @@ The type of cc is `const tinyxml2::XMLElement *` and
 
 ##### And iterate over a subset of the immediate child elements:
 ```c++
-for (auto const cc : tinyxml2::Selector (bThree, "C[@code]"s))
+for (auto const cc : selection (bThree, "C[@code]"s))
    std::cout << attribute_value (cc, "code") << std::endl;;
 ```
 Iterates over all \<C> elements with a code attribute that are children of \<B> element(s) with attribue id='three'.
