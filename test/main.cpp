@@ -69,19 +69,20 @@ int main()
 
 	// these three blocks are equivalent and demonstrate different ways to iterate over
 	// all <C> element children of <B> element children of the document element <A>
+	// we only want to inspect the elements and attributes, so treat the XMLElements as const
 	// 1) native TinyXML2
 	{
 		printf ("\n1)   <C> element children of <B> element children of the document element <A>\nnative TinyXML2\n");
 		tinyxml2::XMLDocument doc;
 		if (doc .Parse (testXml .c_str()) == 0/*XML_NO_ERORR*/)
 		{
-			tinyxml2::XMLElement * eA = doc .FirstChildElement();
+			const tinyxml2::XMLElement * eA = doc .FirstChildElement();
 			if (eA)
 			{
-				tinyxml2::XMLElement * eB = eA -> FirstChildElement("B");
+				const tinyxml2::XMLElement * eB = eA -> FirstChildElement("B");
 				while (eB)
 				{
-					tinyxml2::XMLElement * eC = eB -> FirstChildElement ("C");
+					const tinyxml2::XMLElement * eC = eB -> FirstChildElement ("C");
 					while (eC)
 					{
 						printf ("%s = %s\n", eC -> Name(), eC -> GetText());
@@ -103,7 +104,7 @@ int main()
 	try
 	{
 		auto doc = tinyxml2::load_document (testXml);
-		for (auto eC : tinyxml2::Selector (*doc, "A/B/C"))
+		for (auto eC : tinyxml2::selection (static_cast <const tinyxml2::XMLDocument &> (*doc), "A/B/C"))
 			cout << eC -> Name() << " = " << text (eC) << endl;
 	}
 	catch (tinyxml2::XmlException & e)
@@ -124,7 +125,7 @@ int main()
 			for (auto eB : eA)
 			{
 				// just for fun, use standard algorithm for_each to iterate over the children of <B>
-				for_each (begin (eB), end (eB),
+				for_each (cbegin (eB), cend (eB),
 					[](auto e)
 				{
 						// simple iterators are just that, they iterate over all children
@@ -149,7 +150,7 @@ int main()
 
 		// find first matching an element in the document
 		cout << "find an element by attribute value" << endl;
-		auto bThree = find_element (*doc, "A/B[@id='three']"s);
+		auto bThree = find_element (static_cast<const tinyxml2::XMLDocument &>(*doc), "A/B[@id='three']"s);
 		cout << attribute_value (bThree, "id"s) << " - " << attribute_value (bThree, "org"s) << endl;
 		cout << "=================================================" << endl << endl;
 
@@ -162,7 +163,7 @@ int main()
 
 		// iterate over all <C> children of selected <B>
 		cout << "iterate over all <C> children of selected <B>" << endl;
-		for (auto const cc : tinyxml2::Selector (bThree, "C"s))
+		for (auto cc : tinyxml2::selection (bThree, "C"s))
 		{
 			cout << cc -> Parent() -> ToElement() -> Name() << "[" << attribute_value (cc -> Parent() -> ToElement(), "id") << "] / " << cc -> Name() << "[@code='";
 			if (!attribute_value (cc, "code") .empty())
@@ -178,7 +179,7 @@ int main()
 		// note that because path starts from the document, bThree is used only as an element in the document not the root of the search
 		cout << "iterate over all <C> children : /A/B[@id='three']/C" << endl;
 		int nC = 0;
-		for (auto const cc : tinyxml2::Selector (bThree, "/A/B[@id='three']/C"s))
+		for (auto cc : tinyxml2::selection (bThree, "/A/B[@id='three']/C"s))
 		{
 			++nC;
 			cout << cc -> Parent() -> ToElement() -> Name() << "[" << attribute_value (cc -> Parent() -> ToElement(), "id") << "] / " << cc -> Name() << "[@code='";
@@ -193,7 +194,7 @@ int main()
 
 		// iterate over all children, any name (type), with code attribute value
 		cout << "iterate over all children of any name (type) : /A/B/[@code='9ABC']" << endl;
-		for (auto const cc : tinyxml2::Selector (bThree, "/A/B/[@code='9ABC']"s))
+		for (auto cc : tinyxml2::selection (bThree, "/A/B/[@code='9ABC']"s))
 		{
 			cout << cc -> Parent() -> ToElement() -> Name() << "[" << attribute_value (cc -> Parent() -> ToElement(), "id") << "] / " << cc -> Name() << "[@code='";
 			if (!attribute_value (cc, "code") .empty())
@@ -207,7 +208,7 @@ int main()
 
 		// find the first instance of a child element of the selected type with a matching attribute value
 		cout << "find C[@code='9ABC'] within B[@id='three']" << endl;
-		if (auto const cc = find_element (bThree, "C[@code='9ABC']"s))
+		if (auto cc = find_element (bThree, "C[@code='9ABC']"s))
 			cout << text (cc) << " , " << attribute_value (cc, "description") << endl << endl;
 		else
 			cout << "could not find C[@code='9ABC'] in B" << endl;
@@ -215,7 +216,7 @@ int main()
 
 		// find the same element within document
 		cout << "find B[@id='three']/C[@code='9ABC']" << endl;
-		if (auto const cc = find_element (*doc, "/A/B[@id='three']/C[@code='9ABC']"s))
+		if (auto cc = find_element (*doc, "/A/B[@id='three']/C[@code='9ABC']"s))
 			cout << text (cc) << " , " << attribute_value (cc, "description") << endl << endl;
 		else
 			cout << "could not find A/B[@id='three']/C[@code='9ABC'] in document" << endl;
@@ -227,6 +228,37 @@ int main()
 	{
 		cout << e .what() << endl;
 	}
+
+
+	/////////////////////// modify the document
+
+
+	try
+	{
+		auto doc = tinyxml2::load_document (testXml);
+		// create new CZ element in branch below selected <C> element with new CX and new CY
+		auto ne = append_element (find_element (*doc, "/A/B[@id='three']/C[@code='9ABC']"s), "CX/CY[@id='099']/CZ", {{"id"s, "0998"s}, {"code"s, "ASDF"s}}, "magnum"s);
+		// now use the inserted element to insert another after it
+		auto czId {"1233"s};
+		auto czCode {"ZXCV"s};
+		auto czData {"corneto"s};
+		insert_next_element  (ne, "CZ", {{"id"s, czId}, {"code"s, czCode}}, czData);
+
+		// todo:
+		// what do we want find_element to do when path is empty?
+		// . find the first child element (which is what it does now) ?
+		// . or simply return the parent element passed in ?
+
+		tinyxml2::XMLPrinter printer;
+		doc -> Print (&printer);
+		cout << printer .CStr() << endl;
+	}
+	catch (tinyxml2::XmlException & e)
+	{
+		cout << e .what() << endl;
+	}
+
+
 
 
 	// hold console window open so we can see the output
