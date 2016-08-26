@@ -57,7 +57,7 @@ namespace tinyxml2
 		};	// AttributeNameValue
 
 
-		using AttributeList = std::list <AttributeNameValue>;
+		using attribute_list_t = std::list <AttributeNameValue>;
 
 
 		class ElementProperties
@@ -148,63 +148,69 @@ namespace tinyxml2
 			}
 		private:
 			std::string _name;
-			AttributeList _attributes;
+			attribute_list_t _attributes;
 			enum class ParseState { elementName, attributeFilter, attributeName, attributeAssignment, attributeValue } _state {ParseState::elementName};
 		};	// ElementProperties
 
 
-		template <typename XE>
-		class ElementPath : public std::list<std::pair<ElementProperties, XE *>>
+		template <typename XE> using element_path_location_t = std::pair<ElementProperties, XE *>;
+		template <typename XE> using element_path_t = std::list<element_path_location_t<XE>>;
+		template <typename XE> using element_path_iterator_t = typename element_path_t<XE>::iterator;
+
+
+		template <typename XE> inline element_path_t<XE> element_path_from_xpath (XE * root, const std::string & xpath)
 		{
-		public:
-			ElementPath (XE * root, std::string xpath)
+			if (!root)
+				throw XmlException ("null element"s);
+
+			element_path_t<XE> ep;
+
+			// split the path
+			size_t start = 0;
+			size_t pos;
+			// set element at head of selection branch
+			//	if path starts with '/' then it is relative to document, otherwise relative to element passed in
+			// first element in selection branch is the root and only children of the root are considered
+			// for document-based paths, this works because there can only be one document element
+			if (!xpath.empty() && xpath[0] == '/')
 			{
-				if (!root)
-					throw XmlException ("null element"s);
-
-				// split the path
-				size_t start = 0;
-				size_t pos;
-				// set element at head of selection branch
-				//	if path starts with '/' then it is relative to document, otherwise relative to element passed in
-				// first element in selection branch is the root and only children of the root are considered
-				// for document-based paths, this works because there can only be one document element
-				if (!xpath.empty() && xpath[0] == '/')
+				// document is not an element so needs special handling
+				// advance to the actual document element
+				// note that document element must still appear in path, so we have to step over it
+				++start;
+				if ((pos = xpath .find ('/', start)) != std::string::npos)
 				{
-					// document is not an element so needs special handling
-					// advance to the actual document element
-					// note that document element must still appear in path, so we have to step over it
-					++start;
-					if ((pos = xpath .find ('/', start)) != std::string::npos)
+					auto filter = ElementProperties (xpath .substr (start, pos - start));
+					auto element = root -> GetDocument() -> RootElement();
+					if (element && !filter .Name() .empty())
 					{
-						auto filter = ElementProperties (xpath .substr (start, pos - start));
-						auto element = root -> GetDocument() -> RootElement();
-						if (element && !filter .Name() .empty())
-						{
-							if (filter .Name() != std::string (element -> Name()))
-								throw XmlException ("document element name mismatch"s);
-						}
-						this -> emplace_back (std::make_pair (filter, element));
-						start = pos + 1;
+						if (filter .Name() != std::string (element -> Name()))
+							throw XmlException ("document element name mismatch"s);
 					}
-				}
-				else
-					this -> emplace_back (std::make_pair (ElementProperties (root -> Name()), root));
-
-				// continue with other elements along path
-				while ((pos = xpath .find ('/', start)) != std::string::npos)
-				{
-					this -> emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
+					ep .emplace_back (std::make_pair (filter, element));
 					start = pos + 1;
 				}
-				// and the final element
-				this -> emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
 			}
-			ElementPath (XE * e)
+			else
+				ep .emplace_back (std::make_pair (ElementProperties (root -> Name()), root));
+
+			// continue with other elements along path
+			while ((pos = xpath .find ('/', start)) != std::string::npos)
 			{
-				this -> emplace_back (std::make_pair (ElementProperties(), e));	// e can be null
+				ep .emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
+				start = pos + 1;
 			}
-		};
+			// and the final element
+			ep .emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
+
+			return ep;
+		}
+
+
+		template <typename XE> inline element_path_t<XE> element_path_from_element (XE * e)
+		{
+			return {std::make_pair (ElementProperties(), e)};
+		}
 
 
 		template <typename XE>
@@ -220,52 +226,48 @@ namespace tinyxml2
 
 
 		public:
-			ElementIterator() : _selection (nullptr) {}
-			ElementIterator (XE * e) : _selection (e) {}
-			ElementIterator (ElementPath<XE> s)
-				: _selection(s)
+			ElementIterator() : _selectionPath (element_path_from_element (static_cast<XE *>(nullptr))) {}
+			ElementIterator (XE * origin) : _selectionPath (element_path_from_element (origin)) {}
+			ElementIterator (XE * origin, const std::string & xpath)
+				: _selectionPath (element_path_from_xpath (origin, xpath))
 			{
-				if (_selection .empty())
+				if (_selectionPath .empty())
 					throw XmlException ("selection xpath is empty - logic error");
 
-				// _selection must have at least one element which is the origin of all branches considered
+				// _selectionPath must have at least one element which is the origin of all branches considered
 				// only children of the origin are considered
 				// on construction the origin element must be a valid XMLElement
-				// elements in the remainder of the path are initially null and will be populated with the current branch
-				// as iterations progress
-
-				// descend first matching branch (if any)
-				descend (_selection .begin());
+				// elements in the remainder of the path are initially null
+				// descend and initialise first matching branch (if any)
+				descend (_selectionPath .begin());
 				// remove the origin from the list so that iteration is only over child elements
-				_selection .pop_front();
+				_selectionPath .pop_front();
 			}
 
-			XE * operator *() const { return _selection .back() .second; }
-			bool operator != (const ElementIterator & iter) const { return *iter != _selection .back() .second; }
+			XE * operator *() const { return _selectionPath .back() .second; }
+			bool operator != (const ElementIterator & iter) const { return *iter != _selectionPath .back() .second; }
 			ElementIterator & operator ++()
 			{
 				// to get here we must have found at least one matching element
 				// selection branch contains the complete element path
 #if !defined (NDEBUG)
-				for (auto const & pe : _selection)
+				for (auto const & pe : _selectionPath)
 					assert (pe .second);
 #endif
 				// start at the bottom with the current element
-				traverse (--_selection .end());
+				traverse (--_selectionPath .end());
 				return *this;
 			}
 
 		private:
-			using path_iterator = typename ElementPath<XE>::iterator;
-
-			bool descend (path_iterator ixSel)
+			bool descend (element_path_iterator_t<XE> ixSel)
 			{
 				// recursively descend selection branch of matching elements
 				if (!ixSel -> second)
 					return false;
 				auto parentElement = ixSel -> second;
 
-				if (++ixSel == _selection .end())
+				if (++ixSel == _selectionPath .end())
 					return true;	// we've found the first matching element
 
 				ixSel -> second = parentElement -> FirstChildElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str());
@@ -282,12 +284,12 @@ namespace tinyxml2
 				return false;	// no matching elements at this depth
 			}
 
-			void traverse (path_iterator ixSel)
+			void traverse (element_path_iterator_t<XE> ixSel)
 			{
 				// to find next element we can go sideways or up and then down
 				// traverse() does the moves across the xml tree, descend() then explores each potential new branch
 				// note that this method can only be called once the selection has been initialised
-				while (ixSel -> second = ixSel -> second -> NextSiblingElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str()))
+				while ((ixSel -> second = ixSel -> second -> NextSiblingElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str())))
 				{
 					if (ixSel -> first .Match (ixSel -> second))
 					{
@@ -296,12 +298,12 @@ namespace tinyxml2
 					}
 				}
 				// no siblings or sibling branches match, go up a level (unless already at origin)
-				if (ixSel != _selection .begin())
+				if (ixSel != _selectionPath .begin())
 					traverse (--ixSel);
 			}
 
 		private:
-			ElementPath<XE> _selection;
+			element_path_t<XE> _selectionPath;
 		};	// ElementIterator
 
 
@@ -350,12 +352,12 @@ namespace tinyxml2
 		{
 			// select child elements along XPath-style path for iteration
 		public:
-			Selector (XE * base, const std::string & xpath) : _branch (base, xpath) {}
+			Selector (XE * base, std::string xpath) : _base (base), _xpath (xpath) {}
 
 			ElementIterator<XE> begin() const
 			{
-				if (!_branch .empty() && _branch .front() .second)
-					return ElementIterator<XE> (_branch);
+				if (!_xpath .empty() && _base)
+					return ElementIterator<XE> (_base, _xpath);
 				else
 					return end();
 			};
@@ -366,51 +368,52 @@ namespace tinyxml2
 			};
 
 		private:
-			ElementPath<XE> _branch;	// todo: passed to iterator by value, can it be passed by reference? or should it be heap allocated and passed as unique_ptr ?
+			XE * _base;
+			std::string _xpath;
 		};	// Selector
 
 
 		// helper functions to return appropriate const / non-const Selector
-		inline Selector<XMLElement> selection (XMLElement * base, const std::string & xpath)
+		inline Selector<XMLElement> selection (XMLElement * base, std::string xpath)
 		{
 			return Selector<XMLElement> (base, xpath);
 		}
 
-		inline Selector<const XMLElement> selection (const XMLElement * base, const std::string & xpath)
+		inline Selector<const XMLElement> selection (const XMLElement * base, std::string xpath)
 		{
 			return Selector<const XMLElement> (base, xpath);
 		}
 
-		inline Selector<XMLElement> selection (XMLDocument & doc, const std::string & xpath)
+		inline Selector<XMLElement> selection (XMLDocument & doc, std::string xpath)
 		{
 			return Selector<XMLElement> (doc .RootElement(), (!xpath.empty() && xpath[0] == '/') ? xpath : '/' + xpath);
 		}
 
-		inline Selector<const XMLElement> selection (const XMLDocument & doc, const std::string & xpath)
+		inline Selector<const XMLElement> selection (const XMLDocument & doc, std::string xpath)
 		{
 			return Selector<const XMLElement> (doc .RootElement(), (!xpath.empty() && xpath[0] == '/') ? xpath : '/' + xpath);
 		}
 
 
 		// helper functions to find the first element (if any) below a base element matching the XPath
-		inline XMLElement * find_element (XMLElement * base, const std::string & xpath = ""s)
+		inline XMLElement * find_element (XMLElement * base, std::string xpath = ""s)
 		{
 			return *Selector<XMLElement> (base, xpath) .begin();
 		}
 
 
-		inline const XMLElement * find_element (const XMLElement * base, const std::string & xpath = ""s)
+		inline const XMLElement * find_element (const XMLElement * base, std::string xpath = ""s)
 		{
 			return *Selector<const XMLElement> (base, xpath) .begin();
 		}
 
 
-		inline XMLElement * find_element (XMLDocument & doc, const std::string & xpath = ""s)
+		inline XMLElement * find_element (XMLDocument & doc, std::string xpath = ""s)
 		{
 			return find_element (doc .RootElement(), (!xpath.empty() && xpath[0] == '/') ? xpath : '/' + xpath);
 		}
 
-		inline const XMLElement * find_element (const XMLDocument & doc, const std::string & xpath = ""s)
+		inline const XMLElement * find_element (const XMLDocument & doc, std::string xpath = ""s)
 		{
 			return find_element (doc .RootElement(), (!xpath.empty() && xpath[0] == '/') ? xpath : '/' + xpath);
 		}
@@ -471,12 +474,12 @@ namespace tinyxml2
 
 		// append / prepend element
 		// common method for all append / prepend element insertions
-		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, AttributeList attributes, const std::string & text, bool addAtBack)
+		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, const attribute_list_t & attributes, const std::string & text, bool addAtBack)
 		{
 			XMLElement * element {nullptr};
 			bool inserted {false};
 
-			ElementPath<XMLElement> branch {parent, xpath};
+			element_path_t<XMLElement> branch {element_path_from_xpath (parent, xpath)};
 			// add all the elements to create new branch
 			// first element in branch is the parent, so skip
 			for (auto be = ++branch .begin(); be != branch .end(); ++be)
@@ -524,7 +527,7 @@ namespace tinyxml2
 			return append_element (parent, xpath, {}, ""s, true);
 		}
 
-		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, AttributeList attributes)
+		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes)
 		{
 			return append_element (parent, xpath, attributes, ""s, true);
 		}
@@ -534,7 +537,7 @@ namespace tinyxml2
 			return append_element (parent, xpath, {}, text, true);
 		}
 
-		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, AttributeList attributes, const std::string & text)
+		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes, const std::string & text)
 		{
 			return append_element (parent, xpath, attributes, text, true);
 		}
@@ -546,7 +549,7 @@ namespace tinyxml2
 			return append_element (parent, xpath, {}, ""s, false);
 		}
 
-		inline XMLElement * prepend_element (XMLElement * parent, const std::string & xpath, AttributeList attributes)
+		inline XMLElement * prepend_element (XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes)
 		{
 			return append_element (parent, xpath, attributes, ""s, false);
 		}
@@ -556,13 +559,13 @@ namespace tinyxml2
 			return append_element (parent, xpath, {}, text, false);
 		}
 
-		inline XMLElement * prepend_element (XMLElement * parent, const std::string & xpath, AttributeList attributes, const std::string & text)
+		inline XMLElement * prepend_element (XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes, const std::string & text)
 		{
 			return append_element (parent, xpath, attributes, text, false);
 		}
 
 
-		inline XMLElement * insert_next_element (XMLElement * sibling, const std::string & name, AttributeList attributes = {}, const std::string & text = ""s)
+		inline XMLElement * insert_next_element (XMLElement * sibling, const std::string & name, const attribute_list_t &  attributes = {}, const std::string & text = ""s)
 		{
 			if (!sibling)
 				throw XmlException ("null element"s);
