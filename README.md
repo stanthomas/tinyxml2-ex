@@ -1,5 +1,20 @@
 # tinyxml2-extension
-A set of add-on classes and helper functions bringing basic XPath element selection and C++11/14 features, such as iterators, strings and exceptions, to tinyxml2.
+
+A set of add-on classes and helper functions bringing basic XPath element selection and C++11/14 features such as iterators, strings and exceptions to tinyxml2.
+
+Allows very concise C++ code to access a selection of elements in an XML document:
+```
+auto doc = tinyxml2::load_document (R"-(<?xml version="1.0" encoding="utf-8"?>
+<panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-");
+
+for (auto part : selection (*doc, "panagram/part"))
+   cout << text (part);
+cout << endl;
+```
+outputs:
+```
+The quick brown fox jumps over the lazy dog.
+```
 
 ## Description
 tinyxml2-ex is a header only add-on for tinyxml2; simply include "tixml2ex.h" in your source.
@@ -16,21 +31,7 @@ Currently, attribute values do not fully conform to XPath in that they are not r
 single quotes may be used but are ignored and as a consequence attribute values containing any of the
 special characters `@ [ ] = '` cannot be matched.
 
-tinyxml2-ex allows us to write some very concise C++ code to pull out a selection of elements in an XML document:
-```
-auto doc = tinyxml2::load_document (R"-(<?xml version="1.0" encoding="utf-8"?>
-<panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-");
-
-for (auto part : selection (*doc, "panagram/part"))
-   cout << text (part);
-cout << endl;
-```
-outputs:
-```
-The quick brown fox jumps over the lazy dog.
-```
-
-See USAGE.md for information on using tinyxml2-ex.
+See USAGE.md and Wiki page for information on using tinyxml2-ex.
 
 ### Background
 TinyXML {http://www.grinninglizard.com/tinyxml} is an easy to use, small and efficient XML parser for C++.
