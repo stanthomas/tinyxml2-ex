@@ -2,14 +2,17 @@
 
 A set of add-on classes and helper functions bringing basic XPath element selection and C++11/14 features such as iterators, strings and exceptions to tinyxml2.
 
-Allows very concise C++ code to access a selection of elements in an XML document:
+Allows very concise C++ code to access a selection of elements in an XML document.
+E.g. given an XML document as a string:
 ```
-auto doc = tinyxml2::load_document (R"-(<?xml version="1.0" encoding="utf-8"?>
-<panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-");
-
+auto xml = R"-(<?xml version="1.0" encoding="utf-8"?>
+<panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-"
+```
+then
+```
+auto doc = tinyxml2::load_document (xml);
 for (auto part : selection (*doc, "panagram/part"))
    cout << text (part);
-cout << endl;
 ```
 outputs:
 ```
