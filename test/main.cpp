@@ -48,13 +48,13 @@ int main()
 		<C code="5678">
 			<![CDATA[A-B(one)-C.5678]]>
 		</C>
-		<C code="9ABC">A-B(one)-C.9ABC</C>
+		<C code="9ABC"> A-B{one)-C.9ABC</C>
 		<D code="9ABC" id="dd" />
 	</B>
 	<B id="two">
 		<D id="dd" />
 	</B>
-	<B id="three" org="extern">
+	<B id="three" org="{extern}">
 		<C code="1234">
 			A-B(three)-C.1234
 		</C>
@@ -62,6 +62,7 @@ int main()
 		<D description="A-B(three)-D.9ABC" />
 	</B>
 	<B id="four">
+			one {B4} two {B4}
 	</B>
 </A>
 )-"s};
@@ -258,6 +259,25 @@ int main()
 		cout << e .what() << endl;
 	}
 
+
+	/////////////////////// copy
+	try
+	{
+		auto source = tinyxml2::load_document (testXml);
+		auto dest = std::make_unique <tinyxml2::XMLDocument>();
+		auto e = dest -> NewElement ("mycopy");
+		dest -> InsertEndChild (e);
+
+		xcopy (source -> FirstChildElement(), e, {{"extern", "internal"}, {"B4", "Bee Four"}});
+
+		tinyxml2::XMLPrinter printer;
+		dest -> Print (&printer);
+		cout << printer .CStr() << endl;
+	}
+	catch (tinyxml2::XmlException & e)
+	{
+		cout << e .what() << endl;
+	}
 
 
 
