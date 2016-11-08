@@ -25,6 +25,7 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 #include <string>
 #include <list>
+#include <unordered_map>
 #include <memory>
 #include <exception>
 #include <cassert>
@@ -422,7 +423,7 @@ namespace tinyxml2
 		// load XML document from string buffer
 		inline std::unique_ptr <XMLDocument> load_document (const std::string & xmlString)
 		{
-			auto doc = std:: make_unique <XMLDocument>();
+			auto doc = std::make_unique <XMLDocument>();
 			if (doc -> Parse (xmlString .c_str()) != XML_SUCCESS)
 				throw XmlException ("error in XML"s);
 			return doc;
@@ -474,6 +475,7 @@ namespace tinyxml2
 
 		// append / prepend element
 		// common method for all append / prepend element insertions
+		// todo: consider using std::initializer_list<AttributeNameValue> for attributes parameter
 		inline XMLElement * append_element (XMLElement * parent, const std::string & xpath, const attribute_list_t & attributes, const std::string & text, bool addAtBack)
 		{
 			XMLElement * element {nullptr};
@@ -594,6 +596,162 @@ namespace tinyxml2
 				throw XmlException ("unable to insert element"s);
 			}
 			// always returns valid XMLElement on success, failures are exceptions
+		}
+
+
+
+		class XMLCopy : public XMLVisitor
+		{
+		public:
+			XMLCopy (XMLElement * target) : _target(target) { _newDoc = target -> GetDocument(); }
+
+			virtual bool VisitEnter (const XMLElement & element, const XMLAttribute * attribute) override
+			{
+				auto e = _newDoc -> NewElement (element .Name());
+				_target -> InsertEndChild (e);
+				while (attribute)
+				{
+					e -> SetAttribute (attribute -> Name(), attribute -> Value());
+					attribute = attribute -> Next();
+				}
+				_target = e;
+				return true;
+			}
+
+			virtual bool VisitExit (const XMLElement & element) override
+			{
+				_target = const_cast <XMLElement *> (_target -> Parent() -> ToElement());
+				return true;
+			}
+
+			virtual bool Visit (const XMLDeclaration & declaration) override
+			{
+				auto d = declaration .ShallowClone (_newDoc);
+				_target -> InsertEndChild (d);
+				return true;
+			}
+
+			virtual bool Visit (const XMLText & txt) override
+			{
+				auto t = txt .ShallowClone (_newDoc);
+				_target -> InsertEndChild (t);
+				return true;
+			}
+
+			virtual bool Visit (const XMLComment & comment) override
+			{
+				auto c = comment .ShallowClone (_newDoc);
+				_target -> InsertEndChild (c);
+				return true;
+			}
+
+			virtual bool Visit (const XMLUnknown &) override
+			{
+				return true;
+			}
+
+		protected:
+			XMLElement * _target;
+			XMLDocument * _newDoc;
+		};	// XMLCopy
+
+
+		class XMLCopyAndReplace : public XMLCopy
+		{
+		public:
+			XMLCopyAndReplace (XMLElement * target, const std::unordered_map<std::string, std::string> & params, char openDelim, char closeDelim)
+				: XMLCopy(target), _params(params), _openDelim(openDelim), _closeDelim(closeDelim) {}
+
+			bool VisitEnter (const XMLElement & element, const XMLAttribute * attribute) override
+			{
+				if (XMLCopy::VisitEnter (element, attribute))
+				{
+					auto a = const_cast <XMLAttribute *> (_target -> FirstAttribute());
+					while (a)
+					{
+						auto subst = substitute (a -> Value());
+						if (subst .first)
+							a -> SetAttribute (subst .second .c_str());
+						a = const_cast <XMLAttribute *> (a -> Next());
+					}
+					return true;
+				}
+				else
+					return false;
+			}
+
+			virtual bool Visit (const XMLText & txt) override
+			{
+				if (XMLCopy::Visit (txt))
+				{
+					auto t = _target -> LastChild() -> ToText();	// it's the element text 'cos that the last one we added
+					if (!t -> CData())	// we don't substitute CDATA
+					{
+						auto subst = substitute (t -> Value());
+						if (subst .first)
+							t -> SetValue (subst .second .c_str());
+					}
+					return true;
+				}
+				else
+					return false;
+			}
+
+		private:
+			std::pair <bool, std::string> substitute (const std::string & val)
+			{
+				bool substituted {false};
+				std::string newValue;
+				std::string::size_type cursor = 0;
+				auto ps = val .find (_openDelim);
+				while (ps != std::string::npos)
+				{
+					newValue += val .substr (cursor, ps - cursor);
+					auto pe = val .find (_closeDelim, ps);
+					if (pe != std::string::npos)
+					{
+						cursor = pe+1;
+						auto px = _params .find (val .substr (ps + 1, pe - ps - 1));
+						if (px != _params .end())
+						{
+							newValue += px -> second;
+						}
+						else
+							throw XmlException ("no value for parameter " + (val .substr (ps + 1, pe - ps - 1)));
+						substituted = true;
+						ps = val .find (_openDelim, pe);
+					}
+					else
+					{
+						ps = std::string::npos;
+						break;
+					}
+				}
+				if (substituted)
+					return std::make_pair (true, newValue + val .substr (cursor, ps - cursor));
+				else
+					return std::make_pair (false, val);
+			}
+
+		private:
+			const std::unordered_map<std::string, std::string> & _params;
+			const char _openDelim;
+			const char _closeDelim;
+
+		};	// XMLCopyAndReplace
+
+
+		inline void xcopy (const XMLElement * source, XMLElement * destinationParent)
+		{
+			XMLCopy copier (destinationParent);
+			source -> Accept (&copier);
+		}
+
+
+		inline void xcopy (const XMLElement * source, XMLElement * destinationParent, const std::unordered_map<std::string, std::string> & params, char openDelim = '{', char closeDelim = '}')
+		{
+			XMLCopyAndReplace copier (destinationParent, params, openDelim, closeDelim);
+			source -> Accept (&copier);
 		}
 	}
 }
