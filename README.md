@@ -28,11 +28,13 @@ It is written to C++14 and should work with any standards conforming compiler. I
 tinyxml2-ex has its own namespace, tixml2ex, rather cheekily injected into the tinyxml2 namespace.
 By virtue of ADL, in many cases there is no need to qualify the namespace.
 
-Elements can be found, either directly or via an iterator, using a subset of XPath syntax which
-supports matching elements along a path by element name (type) and attribute name and value.
-Currently, attribute values do not fully conform to XPath in that they are not required to be enclosed in quotes;
-single quotes may be used but are ignored and as a consequence attribute values containing any of the
-special characters `@ [ ] = '` cannot be matched.
+Elements can be found, either directly or via an iterator, using a (subset) of XPath syntax which
+supports matching elements along a path by element name (type) and attribute name and value. Elements can be added using XPath.
+E.g. to add a new child element:
+```
+auto part = find_element (*doc, "/panagram/part")
+append_element (part, "foxtrot[@by='genesis']");
+```
 
 See USAGE.md and Wiki page for information on using tinyxml2-ex.
 
@@ -44,8 +46,3 @@ TiCPP is a wrapper for TinyXML that adds familiar C++ features, including a rath
 TinyXML has been superceeded by TinyXML2 {http://www.grinninglizard.com/tinyxml2/index.html} which is smaller, faster and the focus of current development. However, TinyXML2 eschews the STL and several aspects of modern C++, in the interests, presumably, of the widest possible application.
 
 The purpose of this project, tinyxml2-extension, is to bring TiCPP functionality to TinyXML2 but go further *and* conform to modern C++ style while adding little or no overhead. In keeping with the philosophy of TinyXML2, the extension adds enough functionality to be useful without attempting to implement every option - there are other, much larger and more complex XML libraries available for this.
-
-The initial release focusses on reading and processing XML data generated elsewhere (by TiCPP in my case).
-It will progress to updating and generating XML as I move to TinyXML2 across my applications.
-And stream i/o (since I often want to get/put XML via a socket).
-
