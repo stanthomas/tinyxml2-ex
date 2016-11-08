@@ -118,3 +118,19 @@ The result is two new CZ elements in a new branch CX/CY below the element ```<C 
                 </CY>
             </CX>A-B(three)-C.9ABC</C>
 ```
+
+##### Copy an element
+An element branch, i.e. including all its decendents, can be copied to another element becoming a child branch of that element. The destination can be in the same XML document or another XML document.
+```c++
+// create the destination element in a new document
+auto dest = std::make_unique <tinyxml2::XMLDocument>();
+auto e = dest -> NewElement ("copyA");
+dest -> InsertEndChild (e);
+// copy bThree (above) to new location
+xcopy (bThree, e);
+```
+
+##### XPath Syntax
+Currently, attribute values do not fully conform to XPath in that they are not required to be enclosed in quotes;
+single quotes may be used but are ignored and as a consequence attribute values containing any of the
+special characters `@ [ ] = '` cannot be matched.
