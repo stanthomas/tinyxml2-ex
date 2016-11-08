@@ -4,12 +4,12 @@ A set of add-on classes and helper functions bringing basic XPath element select
 
 Allows very concise C++ code to access a selection of elements in an XML document.
 E.g. given an XML document as a string:
-```
+```c++
 auto xml = R"-(<?xml version="1.0" encoding="utf-8"?>
 <panagram><part>The quick brown fox </part><part>jumps over the lazy dog.</part></panagram>)-"
 ```
 then
-```
+```c++
 auto doc = tinyxml2::load_document (xml);
 for (auto part : selection (*doc, "panagram/part"))
    cout << text (part);
@@ -31,8 +31,8 @@ By virtue of ADL, in many cases there is no need to qualify the namespace.
 Elements can be found, either directly or via an iterator, using a (subset) of XPath syntax which
 supports matching elements along a path by element name (type) and attribute name and value. Elements can be added using XPath.
 E.g. to add a new child element:
-```
-auto part = find_element (*doc, "/panagram/part")
+```c++
+auto part = find_element (*doc, "/panagram/part");
 append_element (part, "foxtrot[@by='genesis']");
 ```
 
