@@ -120,7 +120,7 @@ The result is two new CZ elements in a new branch CX/CY below the element ```<C 
 ```
 
 ##### Copy an element
-An element branch, i.e. including all its decendents, can be copied to another element becoming a child branch of that element. The destination can be in the same XML document or another XML document.
+An element branch, i.e. including all its decendents, can be copied to another element becoming a child branch of that element. The destination can be in the same or another XML document.
 ```c++
 // create the destination element in a new document
 auto dest = std::make_unique <tinyxml2::XMLDocument>();
