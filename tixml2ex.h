@@ -245,7 +245,10 @@ namespace tinyxml2
 				_selectionPath .pop_front();
 			}
 
-			XE * operator *() const { return _selectionPath .back() .second; }
+			// todo: _selectionPath is empty when using find_element on a document and xpath is not qualified with root element name
+			// why? can we ensure _selectionPath is never empty? is it a problem with xpath processing?
+			XE * operator *() const { return !_selectionPath .empty() ? _selectionPath .back() .second : nullptr; }
+
 			bool operator != (const ElementIterator & iter) const { return *iter != _selectionPath .back() .second; }
 			ElementIterator & operator ++()
 			{
