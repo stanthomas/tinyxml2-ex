@@ -244,12 +244,9 @@ namespace tinyxml2
 				// remove the origin from the list so that iteration is only over child elements
 				_selectionPath .pop_front();
 			}
-
-			// todo: _selectionPath is empty when using find_element on a document and xpath is not qualified with root element name
-			// why? can we ensure _selectionPath is never empty? is it a problem with xpath processing?
 			XE * operator *() const { return !_selectionPath .empty() ? _selectionPath .back() .second : nullptr; }
-
-			bool operator != (const ElementIterator & iter) const { return *iter != _selectionPath .back() .second; }
+			bool operator == (const ElementIterator & iter) const { return *iter == _selectionPath .back() .second; }
+			bool operator != (const ElementIterator & iter) const { return ! operator == (iter); }
 			ElementIterator & operator ++()
 			{
 				// to get here we must have found at least one matching element
@@ -645,11 +642,6 @@ namespace tinyxml2
 			{
 				auto c = comment .ShallowClone (_newDoc);
 				_target -> InsertEndChild (c);
-				return true;
-			}
-
-			virtual bool Visit (const XMLUnknown &) override
-			{
 				return true;
 			}
 
