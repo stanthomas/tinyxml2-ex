@@ -29,7 +29,7 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 
 // include the header for tinyxml2ex which includes tinyxml2, remember to put them on your include path
-#include <tixml2ex.h>
+#include <tixml2cx.h>
 
 using namespace std;
 using namespace std::literals::string_literals;
@@ -49,17 +49,17 @@ int main()
 			<![CDATA[A-B(one)-C.5678]]>
 		</C>
 		<C code="9ABC"> A-B{one)-C.9ABC</C>
-		<D code="9ABC" id="dd" />
+		<D code="9ABC" id="d1" />
 	</B>
 	<B id="two">
-		<D id="dd" />
+		<D id="d2" />
 	</B>
 	<B id="three" org="{extern}">
 		<C code="1234">
 			A-B(three)-C.1234
 		</C>
 		<C code="9ABC">A-B(three)-C.9ABC</C>
-		<D description="A-B(three)-D.9ABC" />
+		<D id="d3" description="A-B(three)-D.9ABC" />
 	</B>
 	<B id="four">
 			one {B4} two {B4}
@@ -71,7 +71,7 @@ int main()
 	// these three blocks are equivalent and demonstrate different ways to iterate over
 	// all <C> element children of <B> element children of the document element <A>
 	// we only want to inspect the elements and attributes, so treat the XMLElements as const
-	// 1) native TinyXML2
+	// 1) native TinyXML2 : 21 lines of code
 	{
 		printf ("\n1)   <C> element children of <B> element children of the document element <A>\nnative TinyXML2\n");
 		tinyxml2::XMLDocument doc;
@@ -99,12 +99,13 @@ int main()
 	cout << "----" << endl << endl;
 
 
-	// 2) tixml2ex XPath selector
+	// 2) tixml2ex XPath selector : 10 lines of code
 	cout << "2)   <C> element children of <B> element children of the document element <A>" << endl
 		<< "tixml2ex XPath selector" << endl;
 	try
 	{
 		auto doc = tinyxml2::load_document (testXml);
+		// n.b. the static_cast makes the XMLDocument const and hence all XMLElements returned are also const
 		for (auto eC : tinyxml2::selection (static_cast <const tinyxml2::XMLDocument &> (*doc), "A/B/C"))
 			cout << eC -> Name() << " = " << text (eC) << endl;
 	}
@@ -115,7 +116,7 @@ int main()
 	cout << "----" << endl << endl;
 
 
-	// 3) simple tixml2ex element iterator
+	// 3) simple tixml2ex element iterator : 18 lines of code
 	cout << endl << "3)   <C> element children of <B> element children of the document element <A>" << endl
 		<< "simple tixml2ex element iterator" << endl;
 	try
@@ -224,6 +225,12 @@ int main()
 		cout << "=================================================" << endl << endl;
 
 
+		// iterate over all children, any name (type), of <B> elements which are children of the document element
+		cout << "iterate over all children, any name (type), of <B> elements which are children of the document element" << endl;
+		auto eA = doc -> FirstChildElement();
+		for (auto cd : tinyxml2::selection (eA, "B/"))
+			cout << cd -> Name() << " = " << text (cd) << " id=" << attribute_value (cd, "id") << endl;
+		cout << "=================================================" << endl << endl;
 	}
 	catch (tinyxml2::XmlException & e)
 	{
