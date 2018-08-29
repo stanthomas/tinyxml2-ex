@@ -246,7 +246,7 @@ namespace tinyxml2
 				_selectionPath .pop_front();
 			}
 			XE * operator *() const { return !_selectionPath .empty() ? _selectionPath .back() .second : nullptr; }
-			bool operator == (const ElementIterator & iter) const { return *iter == _selectionPath .back() .second; }
+			bool operator == (const ElementIterator & iter) const { return iter.operator*() == this->operator*(); }
 			bool operator != (const ElementIterator & iter) const { return ! operator == (iter); }
 			ElementIterator & operator ++()
 			{
