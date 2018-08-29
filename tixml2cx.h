@@ -30,7 +30,7 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 #include <unordered_map>
 #ifndef __TINYXML_EX__
-#include <tixml2ex.h>
+#include "tixml2ex.h"
 #endif // !__TINYXML_EX__
 
 namespace tinyxml2
