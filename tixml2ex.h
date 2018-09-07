@@ -1,4 +1,4 @@
-/*
+﻿/*
 tinyxml2ex - a set of add-on classes and helper functions bringing C++11/14 features, such as iterators, strings and exceptions, to tinyxml2
 
 
@@ -40,14 +40,14 @@ namespace tinyxml2
 	{
 		using namespace std::literals::string_literals;
 
-		class XmlException : public std::logic_error
+		class TINYXML2_LIB XmlException : public std::logic_error
 		{
 		public:
 			XmlException (const std::string & description) : logic_error (description) {}
 		};
 
 
-		class AttributeNameValue
+		class TINYXML2_LIB AttributeNameValue
 		{
 		public:
 			AttributeNameValue (std::string name, std::string value) : _name(name), _value(value) {}
@@ -62,7 +62,7 @@ namespace tinyxml2
 		using attribute_list_t = std::list <AttributeNameValue>;
 
 
-		class ElementProperties
+		class TINYXML2_LIB ElementProperties
 		{
 		public:
 			ElementProperties (std::string xProps)
@@ -132,7 +132,7 @@ namespace tinyxml2
 
 			}
 			ElementProperties() {}	// an empty property set
-			std::string Name() const { return _name; }
+			const std::string& Name() const { return _name; }
 			bool Match (const XMLElement * element) const
 			{
 				// n.b. we only match attributes here, not the element name (type)
@@ -269,10 +269,46 @@ namespace tinyxml2
 					return false;
 				auto parentElement = ixSel -> second;
 
+				bool isBegin = ixSel == _selectionPath.begin();
+
 				if (++ixSel == _selectionPath .end())
 					return true;	// we've found the first matching element
 
-				ixSel -> second = parentElement -> FirstChildElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str());
+				ixSel->second = parentElement->FirstChildElement(ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str());
+				
+				//判断是否双斜杠，若不是跟目录，则寻找下一级
+				if (isBegin && ixSel->second ==nullptr)
+				{
+					std::vector<XE*> searchEleList = { parentElement };
+					const char* eleName = ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str();
+					
+					auto lastEle = searchEleList.back();
+					while (searchEleList.size())
+					{
+						auto& lastEle = searchEleList.back();
+						if (auto ele = lastEle->FirstChildElement(eleName))
+						{
+							ixSel->second = ele;
+							break;
+						}
+						else if(auto ele = lastEle->FirstChildElement())
+						{
+							searchEleList.push_back(ele);
+							continue;
+						}
+
+						//至少要next一次
+						if (!(lastEle = lastEle->NextSiblingElement()))
+						{
+							while (searchEleList.back() == nullptr && searchEleList.size())
+							{
+								searchEleList.pop_back();
+								if (searchEleList.empty()) break;
+								searchEleList.back() = searchEleList.back()->NextSiblingElement();
+							}
+						}
+					}
+				}
 				while (ixSel -> second)
 				{
 					if (ixSel -> first .Match (ixSel -> second))
