@@ -276,7 +276,7 @@ namespace tinyxml2
 
 				ixSel->second = parentElement->FirstChildElement(ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str());
 				
-				//判断是否双斜杠，若不是跟目录，则寻找下一级
+				//判断是否双斜杠，若不是根目录，则寻找下一级
 				if (isBegin && ixSel->second ==nullptr)
 				{
 					std::vector<XE*> searchEleList = { parentElement };
@@ -602,6 +602,15 @@ namespace tinyxml2
 		{
 			return append_element (parent, xpath, attributes, text, false);
 		}
+
+        //touch family
+        inline XMLElement * touch_element(XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes = {}, const std::string & text = "")
+        {
+            auto ele = find_element(parent, xpath);
+            if(ele==nullptr) ele = append_element(parent, xpath, attributes, text, true);
+            assert(ele);
+            return ele;
+        }
 
 
 		inline XMLElement * insert_next_element (XMLElement * sibling, const std::string & name, const attribute_list_t &  attributes = {}, const std::string & text = ""s)
