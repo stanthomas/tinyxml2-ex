@@ -276,7 +276,7 @@ namespace tinyxml2
 
 				ixSel->second = parentElement->FirstChildElement(ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str());
 				
-				//判断是否双斜杠，若不是根目录，则寻找下一级
+				//To determine whether a double slash, if not the root directory, looks for the next level.
 				if (isBegin && ixSel->second ==nullptr)
 				{
 					std::vector<XE*> searchEleList = { parentElement };
@@ -297,7 +297,7 @@ namespace tinyxml2
 							continue;
 						}
 
-						//至少要next一次
+						//Next at least once.
 						if (!(lastEle = lastEle->NextSiblingElement()))
 						{
 							while (searchEleList.back() == nullptr && searchEleList.size())
