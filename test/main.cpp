@@ -296,7 +296,7 @@ int main()
 		// iterate over all children, any name (type), of <B> elements which are children of the document element
 		cout << "iterate over all children, any name (type), of <B> elements which are children of the document element" << endl;
 		auto eA = doc -> FirstChildElement();
-		for (auto cd : tinyxml2::selection (eA, "B/"))
+		for (auto cd : tinyxml2::selection (eA, "B/*"))
 			cout << cd -> Name() << " = " << text (cd) << " id=" << attribute_value (cd, "id") << endl;
 		cout << "=================================================" << endl << endl;
 	}
