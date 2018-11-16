@@ -65,7 +65,11 @@ namespace tinyxml2
 		class TINYXML2_LIB ElementProperties
 		{
 		public:
-			ElementProperties (std::string xProps)
+            enum class Location {
+                locationChildren, locationChildrenNoName, locationAllChildren, locationMyself, locationParent, locationFunction, locationRoot
+            };           
+
+			ElementProperties (std::string xProps,size_t pos)
 			{
 				// parse xProps for element name and attribute filters using simplified XPath syntax
 				std::string attributeName, attributeValue;
@@ -104,11 +108,52 @@ namespace tinyxml2
 					else if (c == '\'')
 					{
 						if (!(_state == ParseState::attributeAssignment || _state == ParseState::attributeValue))
-							throw XmlException ("ill formed XPath"s);
+							throw XmlException("ill formed XPath"s);
 						// XPath attribute values are wrapped in single quote marks
 						// but we don't require them and ignore them if present
 						// toggle between two effectively equivalent modes
 						_state = _state == ParseState::attributeAssignment ? ParseState::attributeValue : ParseState::attributeAssignment;
+					}
+					else if (c == '.')
+					{
+						if (_state != ParseState::elementName)
+							throw XmlException("ill formed XPath"s);
+
+						if (_location == Location::locationChildren)
+						{
+							_location = Location::locationMyself;
+						}
+						else if (_location == Location::locationMyself)
+						{
+							_location = Location::locationParent;
+						}
+						else
+						{
+							throw XmlException("ill formed XPath"s);
+						}
+					}
+					else if (c == '*')
+					{
+						if (_state != ParseState::elementName)
+							throw XmlException("ill formed XPath"s);
+						_location = Location::locationChildrenNoName;
+					}
+					else if (c == '/')
+					{
+						if (_state != ParseState::elementName)
+							throw XmlException("ill formed XPath"s);
+						if (pos == 0)
+						{
+							_location = Location::locationRoot;
+						}
+						else if (_location == Location::locationChildren)
+						{
+							_location = Location::locationAllChildren;
+						}
+						else
+						{
+							throw XmlException("ill formed XPath"s);
+						}
 					}
 					else
 					{
@@ -132,7 +177,9 @@ namespace tinyxml2
 
 			}
 			ElementProperties() {}	// an empty property set
-			const std::string& Name() const { return _name; }
+            const std::string& Name() const { return _name; }
+            const Location& LocationType() const { return  _location; }
+
 			bool Match (const XMLElement * element) const
 			{
 				// n.b. we only match attributes here, not the element name (type)
@@ -148,11 +195,123 @@ namespace tinyxml2
 				for (auto const & attr : _attributes)
 					element -> SetAttribute (attr .Name() .c_str(), attr .Value() .c_str());
 			}
+
+            XMLElement * Locate(XMLElement *element, XMLElement *lastLocationElement = nullptr)const
+            {
+               auto ret = Locate(const_cast<const XMLElement *>(element), const_cast<const XMLElement *>(lastLocationElement));
+               return const_cast<XMLElement *>(ret);
+            }
+
+				//locate the element
+				//element = curLocation
+				//frontElement=lastLocation(not must parent, example A//B) 
+            const XMLElement * Locate(const XMLElement *element,const XMLElement *frontElement)const
+            {
+                if (frontElement == nullptr) return nullptr;
+
+                const XMLElement * retElement = nullptr;//return element
+                switch (_location)
+                {
+                case Location::locationChildren:
+						 if(element == nullptr)
+							retElement= frontElement->FirstChildElement(_name.c_str());
+						 else
+							 retElement = element->NextSiblingElement(_name.c_str());
+                    break;
+                case Location::locationMyself:
+                    retElement = frontElement;
+                    break;
+                case Location::locationParent:
+                    retElement = frontElement->Parent()->ToElement();
+                    break;
+					 case Location::locationChildrenNoName:
+						 if (!element)
+						 {
+							 retElement = frontElement->FirstChildElement();
+						 }
+						 else
+						 {
+							 retElement = element->NextSiblingElement();
+						 }
+						 break;
+                case Location::locationAllChildren:
+					 {
+						 assert(frontElement);
+						 std::vector<const XMLElement *> searchEleList;
+						 if (element == nullptr)
+						 {
+							 searchEleList = { frontElement ,frontElement->FirstChildElement() };
+						 }
+						 else
+						 {
+							 //get element->xx->xx->lastLocationElement list
+							 searchEleList = { element };
+							 auto lastpath = element;
+							 while (auto parentEle = lastpath->Parent()->ToElement())
+							 {
+								 searchEleList.push_back(parentEle);
+
+								 if (searchEleList.back() == frontElement)
+									 break;
+
+								 lastpath = parentEle;
+							 }
+							 assert(searchEleList.back() != nullptr);
+							 if (searchEleList.back() != frontElement)
+								 break;
+							 //reverse to lastLocationElement->xx->xx->element list
+							 std::reverse(searchEleList.begin(), searchEleList.end());
+						 }
+
+						 //search lastLocationElement----->element,all children will be checked
+						 const char* eleName = _name.c_str();
+						 while (searchEleList.size())
+						 {
+							 while (searchEleList.back() == nullptr && searchEleList.size())
+							 {
+								 searchEleList.pop_back();
+								 if (searchEleList.empty()) break;
+								 searchEleList.back() = searchEleList.back()->NextSiblingElement();
+							 }
+							 if (searchEleList.empty()) break;
+
+							 auto& lastEle = searchEleList.back();
+							 if (lastEle != frontElement && lastEle != element
+								 && _name == lastEle->Value())
+							 {
+								 retElement = lastEle;
+								 break;
+							 }
+							 else if (auto ele = lastEle->FirstChildElement())
+							 {
+								 searchEleList.push_back(ele);
+								 continue;
+							 }
+
+							 //search the children where is a target element
+							 lastEle = lastEle->NextSiblingElement();
+						 }
+					 }break;
+                case Location::locationFunction:
+                    //TODO some function like A[0],A[price<3],A[size()-1]
+                    break;
+                case Location::locationRoot:
+                    retElement = frontElement->GetDocument()->RootElement();
+                    break;
+                default:
+                    break;
+                }
+                return retElement;
+            }
+
 		private:
 			std::string _name;
-			attribute_list_t _attributes;
-			enum class ParseState { elementName, attributeFilter, attributeName, attributeAssignment, attributeValue } _state {ParseState::elementName};
-		};	// ElementProperties
+            attribute_list_t _attributes;
+            enum class ParseState { elementName, attributeFilter, attributeName, attributeAssignment, attributeValue };
+            
+            ParseState _state {ParseState::elementName};
+            Location _location = { Location::locationChildren };//use to relocate the level in element
+        };	// ElementProperties
 
 
 		template <typename XE> using element_path_location_t = std::pair<ElementProperties, XE *>;
@@ -162,50 +321,71 @@ namespace tinyxml2
 
 		template <typename XE> inline element_path_t<XE> element_path_from_xpath (XE * root, const std::string & xpath)
 		{
-			if (!root)
+            //if there is //B, list is /B
+            //if there is A//B, list is A->/B
+            //if there is A//B/C, list is A->/B->C
+            //if there is A//B[@p='v']/C, list is A->/B[@p='v']->C
+            //if there is /A//B/C, list is A->/B->C
+
+			if (!root || xpath.empty())
 				throw XmlException ("null element"s);
 
 			element_path_t<XE> ep;
 
 			// split the path
 			size_t start = 0;
-			size_t pos;
+			size_t pos = 0;
 			// set element at head of selection branch
 			//	if path starts with '/' then it is relative to document, otherwise relative to element passed in
 			// first element in selection branch is the root and only children of the root are considered
 			// for document-based paths, this works because there can only be one document element
-			if (!xpath.empty() && xpath[0] == '/')
+			if (xpath.size() >= 2 && xpath[0] == '/' && xpath[1] != '/')
 			{
 				// document is not an element so needs special handling
 				// advance to the actual document element
 				// note that document element must still appear in path, so we have to step over it
-				++start;
-				if ((pos = xpath .find ('/', start)) != std::string::npos)
+				start++;
+				pos = xpath.find('/', start);
+
+				auto filter = ElementProperties(xpath.substr(start, pos - start), 0);
+				auto element = root->GetDocument()->RootElement();
+				if (element && !filter.Name().empty())
 				{
-					auto filter = ElementProperties (xpath .substr (start, pos - start));
-					auto element = root -> GetDocument() -> RootElement();
-					if (element && !filter .Name() .empty())
-					{
-						if (filter .Name() != std::string (element -> Name()))
-							throw XmlException ("document element name mismatch"s);
-					}
-					ep .emplace_back (std::make_pair (filter, element));
-					start = pos + 1;
+					if (filter.Name() != std::string(element->Name()))
+						throw XmlException("document element name mismatch"s);
 				}
+				ep.emplace_back(std::make_pair(filter, element));
+				start = pos;
 			}
 			else
-				ep .emplace_back (std::make_pair (ElementProperties (root -> Name()), root));
+			{
+				ep.emplace_back(std::make_pair(ElementProperties(root->Name(), 0), root));
+			}
 
 			// continue with other elements along path
-			while ((pos = xpath .find ('/', start)) != std::string::npos)
+			while (start != std::string::npos)
 			{
-				ep .emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
-				start = pos + 1;
-			}
-			// and the final element
-			ep .emplace_back (std::make_pair (ElementProperties (xpath .substr (start, pos - start)), nullptr));
+				//if (xpath.size()-1 > start && xpath[start]=='/' && xpath[start + 1] == '/')
+				//{
+				//	//if there is //B, substring is /B
+				//	start++;
+				//}
+				if (xpath[start]=='/')
+					start++;
+				pos = xpath.find('/', start + 1);
 
-			return ep;
+				ep.emplace_back(std::make_pair(ElementProperties(xpath.substr(start, pos - start), start), nullptr));
+
+				start = pos;
+			}
+
+			// and the final element,if "//B" is last string, step over it
+			if (start < xpath.size())
+			{
+				ep.emplace_back(std::make_pair(ElementProperties(xpath.substr(start, pos - start), start), nullptr));
+			}
+
+			return std::move(ep);
 		}
 
 
@@ -243,7 +423,9 @@ namespace tinyxml2
 				// descend and initialise first matching branch (if any)
 				descend (_selectionPath .begin());
 				// remove the origin from the list so that iteration is only over child elements
-				_selectionPath .pop_front();
+
+                /*if(_selectionPath.begin()->first.LocationType() != ElementProperties::Location::locationRoot)
+                    _selectionPath .pop_front();*/
 			}
 			XE * operator *() const { return !_selectionPath .empty() ? _selectionPath .back() .second : nullptr; }
 			bool operator == (const ElementIterator & iter) const { return iter.operator*() == this->operator*(); }
@@ -262,82 +444,67 @@ namespace tinyxml2
 			}
 
 		private:
-			bool descend (element_path_iterator_t<XE> ixSel)
+			bool descend(element_path_iterator_t<XE> parentixSel)
 			{
 				// recursively descend selection branch of matching elements
-				if (!ixSel -> second)
+				if (!parentixSel->second)
 					return false;
-				auto parentElement = ixSel -> second;
+				auto parentElement = parentixSel->second;
+				if (parentElement == nullptr) return false;
 
-				bool isBegin = ixSel == _selectionPath.begin();
-
-				if (++ixSel == _selectionPath .end())
+				auto ixSel = parentixSel;
+				if (++ixSel == _selectionPath.end())
 					return true;	// we've found the first matching element
 
-				ixSel->second = parentElement->FirstChildElement(ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str());
-				
-				//判断是否双斜杠，若不是根目录，则寻找下一级
-				if (isBegin && ixSel->second ==nullptr)
-				{
-					std::vector<XE*> searchEleList = { parentElement };
-					const char* eleName = ixSel->first.Name().empty() ? nullptr : ixSel->first.Name().c_str();
-					
-					auto lastEle = searchEleList.back();
-					while (searchEleList.size())
-					{
-						auto& lastEle = searchEleList.back();
-						if (auto ele = lastEle->FirstChildElement(eleName))
-						{
-							ixSel->second = ele;
-							break;
-						}
-						else if(auto ele = lastEle->FirstChildElement())
-						{
-							searchEleList.push_back(ele);
-							continue;
-						}
+				const ElementProperties&  eleppt = ixSel->first;
 
-						//至少要next一次
-						if (!(lastEle = lastEle->NextSiblingElement()))
-						{
-							while (searchEleList.back() == nullptr && searchEleList.size())
-							{
-								searchEleList.pop_back();
-								if (searchEleList.empty()) break;
-								searchEleList.back() = searchEleList.back()->NextSiblingElement();
-							}
-						}
-					}
-				}
-				while (ixSel -> second)
+				while (ixSel->second = eleppt.Locate(ixSel->second, parentElement))
 				{
-					if (ixSel -> first .Match (ixSel -> second))
+					if (ixSel->first.Match(ixSel->second))
 					{
-						if (descend (ixSel))
+						if (descend(ixSel))
 							return true;
 					}
-					// move sideways
-					ixSel -> second = ixSel -> second -> NextSiblingElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str());
 				}
-				return false;	// no matching elements at this depth
+				return false;
 			}
 
-			void traverse (element_path_iterator_t<XE> ixSel)
+			void traverse(element_path_iterator_t<XE> ixSel)
 			{
 				// to find next element we can go sideways or up and then down
 				// traverse() does the moves across the xml tree, descend() then explores each potential new branch
 				// note that this method can only be called once the selection has been initialised
-				while ((ixSel -> second = ixSel -> second -> NextSiblingElement (ixSel -> first .Name() .empty() ? nullptr : ixSel -> first .Name() .c_str())))
+				const ElementProperties&  eleppt = ixSel->first;
+				XE* parentElement = nullptr;
+				if (ixSel != _selectionPath.begin())
 				{
-					if (ixSel -> first .Match (ixSel -> second))
+					auto parentixSel = ixSel;
+					--parentixSel;
+					parentElement = parentixSel->second;
+				}
+
+				if (parentElement)
+				{
+					while (ixSel->second = eleppt.Locate(ixSel->second, parentElement))
 					{
-						if (descend (ixSel))
-							return;
+						if (ixSel->first.Match(ixSel->second))
+						{
+							if (descend(ixSel))
+							{
+								return;
+							}
+						}
 					}
 				}
+				
+				//clear cur element
+				ixSel->second = nullptr;
+
 				// no siblings or sibling branches match, go up a level (unless already at origin)
-				if (ixSel != _selectionPath .begin())
-					traverse (--ixSel);
+				if (ixSel != _selectionPath.begin())
+				{
+					traverse(--ixSel);
+				}
 			}
 
 		private:
@@ -602,15 +769,6 @@ namespace tinyxml2
 		{
 			return append_element (parent, xpath, attributes, text, false);
 		}
-
-        //touch family
-        inline XMLElement * touch_element(XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes = {}, const std::string & text = "")
-        {
-            auto ele = find_element(parent, xpath);
-            if(ele==nullptr) ele = append_element(parent, xpath, attributes, text, true);
-            assert(ele);
-            return ele;
-        }
 
 
 		inline XMLElement * insert_next_element (XMLElement * sibling, const std::string & name, const attribute_list_t &  attributes = {}, const std::string & text = ""s)
