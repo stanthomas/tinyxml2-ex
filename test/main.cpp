@@ -108,6 +108,7 @@ int main()
 			,{R"(//A//B//C)",3}
 			,{ R"(A/B[@code='1'])",2 }
 			,{ R"(A/B[@code='1']/C)",3 }
+			,{ R"(/A/../B[@code='1']/C)",4 }
 		};
 
 		for (auto& it : xpathElementCount)
@@ -150,30 +151,35 @@ int main()
 		}
 		assert(count== 5);
 		if (count != 5)
-		{
 			cout << "A//C expect 5  but actrul equal to "<<count  << endl;
-		}
 
 		count = 0;
 		for(auto it : tinyxml2::selection(doc->RootElement(),"*/B/C"s))
-		{
 			++count;
-		}
 		assert(count == 0);
 
 		count = 0;
 		for (auto it : tinyxml2::selection(doc->RootElement(), "*/C"s))
-		{
 			++count;
-		}
 		assert(count == 5);
 
 		count = 0;
 		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/*/C"s))
-		{
 			++count;
-		}
 		assert(count == 5);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/B[@id='one']/../B[@id='three']/C"s))
+			++count;
+		assert(count == 2);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/B/.[@id='one']/C"s))
+			++count;
+		assert(count == 3);
+
+		for (auto eC : tinyxml2::selection(doc->RootElement(), "//B[@id='one']"s))
+			cout << eC->Name() << " id = " << attribute_value(eC,"id") << endl;
 
 		cout << "=================================================" << endl << endl;
 	}

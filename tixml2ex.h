@@ -1,4 +1,4 @@
-﻿/*
+/*
 tinyxml2ex - a set of add-on classes and helper functions bringing C++11/14 features, such as iterators, strings and exceptions, to tinyxml2
 
 
@@ -222,7 +222,7 @@ namespace tinyxml2
                     retElement = frontElement;
                     break;
                 case Location::locationParent:
-                    retElement = frontElement->Parent()->ToElement();
+                    retElement = frontElement->Parent()->ToElement();						  
                     break;
 					 case Location::locationChildrenNoName:
 						 if (!element)
@@ -301,6 +301,9 @@ namespace tinyxml2
                 default:
                     break;
                 }
+					 if (retElement == element)//if it's myself return false
+						 retElement = nullptr;
+
                 return retElement;
             }
 
