@@ -1,4 +1,4 @@
-/*
+﻿/*
 tinyxml2ex - a set of add-on classes and helper functions bringing C++11/14 features, such as iterators, strings and exceptions, to tinyxml2
 
 
@@ -773,6 +773,14 @@ namespace tinyxml2
 			return append_element (parent, xpath, attributes, text, false);
 		}
 
+		//touch family
+		inline XMLElement * touch_element(XMLElement * parent, const std::string & xpath, const attribute_list_t &  attributes = {}, const std::string & text = "")
+		{
+			auto ele = find_element(parent, xpath);
+			if (ele == nullptr) ele = append_element(parent, xpath, attributes, text, true);
+			assert(ele);
+			return ele;
+		}
 
 		inline XMLElement * insert_next_element (XMLElement * sibling, const std::string & name, const attribute_list_t &  attributes = {}, const std::string & text = ""s)
 		{
