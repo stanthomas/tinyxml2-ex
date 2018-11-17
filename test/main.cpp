@@ -1,4 +1,4 @@
-/*
+﻿/*
 tinyxml2ex - a set of add-on classes and helper functions bringing C++11/14 features, such as iterators, strings and exceptions, to tinyxml2
 
 
@@ -30,6 +30,8 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 // include the header for tinyxml2ex which includes tinyxml2, remember to put them on your include path
 #include <tixml2cx.h>
+#include <map>
+#include <assert.h>
 
 using namespace std;
 using namespace std::literals::string_literals;
@@ -95,8 +97,38 @@ int main()
 			else
 				printf ("unable to load XML document\n");
 		}
+
+		std::map<std::string, size_t> xpathElementCount = {
+			{ R"(A)",1 }
+			,{ R"(A/B/C)",3 }
+			,{ R"(A//B/C)",3 }
+			,{ R"(A/B//C)",3 }
+			,{ R"(A//B//C)",3 }
+			,{ R"(/A//B//C)",3 }
+			,{R"(//A//B//C)",3}
+			,{ R"(A/B[@code='1'])",2 }
+			,{ R"(A/B[@code='1']/C)",3 }
+			,{ R"(/A/../B[@code='1']/C)",4 }
+		};
+
+		for (auto& it : xpathElementCount)
+		{
+			auto element_path = tinyxml2::element_path_from_xpath(doc.RootElement(), it.first);
+
+			auto& xpath = it.first;
+			auto expectCount = it.second;
+			//if it's not root
+			if (!(xpath.size() >= 2 && xpath[0] == '/' && xpath[1] != '/'))
+			{
+				expectCount++;
+			}
+
+			assert(element_path.size() == expectCount);
+		}
 	}
 	cout << "----" << endl << endl;
+
+
 
 
 	// 2) tixml2ex XPath selector : 10 lines of code
@@ -108,6 +140,48 @@ int main()
 		// n.b. the static_cast makes the XMLDocument const and hence all XMLElements returned are also const
 		for (auto eC : tinyxml2::selection (static_cast <const tinyxml2::XMLDocument &> (*doc), "A/B/C"))
 			cout << eC -> Name() << " = " << text (eC) << endl;
+
+		cout << "=================================================" << endl << endl;
+
+		size_t count = 0;
+
+		for (auto eC : tinyxml2::selection(static_cast <const tinyxml2::XMLDocument &> (*doc), "A//C"))
+		{
+			++count;
+		}
+		assert(count== 5);
+		if (count != 5)
+			cout << "A//C expect 5  but actrul equal to "<<count  << endl;
+
+		count = 0;
+		for(auto it : tinyxml2::selection(doc->RootElement(),"*/B/C"s))
+			++count;
+		assert(count == 0);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "*/C"s))
+			++count;
+		assert(count == 5);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/*/C"s))
+			++count;
+		assert(count == 5);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/B[@id='one']/../B[@id='three']/C"s))
+			++count;
+		assert(count == 2);
+
+		count = 0;
+		for (auto it : tinyxml2::selection(doc->RootElement(), "/A/B/.[@id='one']/C"s))
+			++count;
+		assert(count == 3);
+
+		for (auto eC : tinyxml2::selection(doc->RootElement(), "//B[@id='one']"s))
+			cout << eC->Name() << " id = " << attribute_value(eC,"id") << endl;
+
+		cout << "=================================================" << endl << endl;
 	}
 	catch (tinyxml2::XmlException & e)
 	{
@@ -228,7 +302,7 @@ int main()
 		// iterate over all children, any name (type), of <B> elements which are children of the document element
 		cout << "iterate over all children, any name (type), of <B> elements which are children of the document element" << endl;
 		auto eA = doc -> FirstChildElement();
-		for (auto cd : tinyxml2::selection (eA, "B/"))
+		for (auto cd : tinyxml2::selection (eA, "B/*"))
 			cout << cd -> Name() << " = " << text (cd) << " id=" << attribute_value (cd, "id") << endl;
 		cout << "=================================================" << endl << endl;
 	}
