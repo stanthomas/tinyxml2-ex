@@ -508,7 +508,10 @@ namespace tinyxml2
 			{
 				// set the attributes and text for final element from arguments
 				for (auto const & attr : attributes)
-					element -> SetAttribute (attr .Name() .c_str(), attr .Value() .c_str());
+			   {
+               if ( !attr.Value().empty() )
+					   element -> SetAttribute (attr .Name() .c_str(), attr .Value() .c_str());
+				}	
 				if (!text .empty())
 					element -> SetText (text .c_str());
 				return element;
@@ -586,7 +589,10 @@ namespace tinyxml2
 			if (inserted)
 			{
 				for (auto const & attr : attributes)
-					element -> SetAttribute (attr .Name() .c_str(), attr .Value() .c_str());
+			   {
+          		if ( !attr.Value().empty() )
+						element -> SetAttribute (attr .Name() .c_str(), attr .Value() .c_str());
+				}
 				if (!text .empty())
 					element -> SetText (text .c_str());
 				return element;
