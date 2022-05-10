@@ -2,7 +2,7 @@ Examples of tinyxml2-ex usage can be found in the test folder.
 Extracts are reproduced here with explanatory notes. But please download the test project and play around.
 
 The easiest way to use this extension is to download tinyxml2ex.h and save it to the same folder as tinyxml2.
-TinyXML2 can be downloaded from it's project site {https://github.com/leethomason/tinyxml2} and it is also on `nuget`.
+TinyXML2 can be downloaded from it's project site : https://github.com/leethomason/tinyxml2 . And it is also on `nuget`.
 
 In your code, include the header for tinyxml2ex which, in turn, includes tinyxml2.h. Remember to put the folder on your include path.
 ```#include <tixml2ex.h>```
