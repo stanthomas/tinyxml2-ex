@@ -30,14 +30,14 @@ It can be found here: https://github.com/leethomason/tinyxml2 and has it's own l
 
 #include <unordered_map>
 #ifndef __TINYXML_EX__
-#include <tixml2ex.h>
+#include "tixml2ex.h"
 #endif // !__TINYXML_EX__
 
 namespace tinyxml2
 {
 	inline namespace tixml2ex
 	{
-		class XMLCopy : public XMLVisitor
+		class TINYXML2_LIB XMLCopy : public XMLVisitor
 		{
 		public:
 			XMLCopy (XMLElement * target) : _target(target) { _newDoc = target->GetDocument(); }
@@ -88,7 +88,7 @@ namespace tinyxml2
 		};	// XMLCopy
 
 
-		class XMLCopyAndReplace : public XMLCopy
+		class TINYXML2_LIB XMLCopyAndReplace : public XMLCopy
 		{
 		public:
 			XMLCopyAndReplace (XMLElement * target, const std::unordered_map<std::string, std::string> & params, char openDelim, char closeDelim)
